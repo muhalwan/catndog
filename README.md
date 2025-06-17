@@ -1,25 +1,9 @@
----
-license: mit
-tags:
-  - image-classification
-  - efficientnet
-  - cats
-  - dogs
-  - keras
-  - tensorflow
-datasets:
-  - microsoft/cats_vs_dogs
-metrics:
-  - accuracy
-  - auc
----
-
 # 🐱🐶 Cat vs. Dog Classifier (EfficientNet-B0, Keras/TensorFlow)
 
 A lightweight CNN that predicts whether an image contains **a cat or a dog**.
 The backbone is `EfficientNetB0` pre-trained on ImageNet and fine-tuned on the
 [microsoft/cats_vs_dogs](https://huggingface.co/datasets/microsoft/cats_vs_dogs)
-training split (23 410 images).
+training split (23 410 images). You can get the model at https://huggingface.co/deruppu/catndog
 
 ## Model Details
 
