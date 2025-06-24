@@ -3,7 +3,6 @@ import io
 import random
 import math
 import json
-import argparse
 import pathlib
 import multiprocessing
 import numpy as np
@@ -35,21 +34,24 @@ else:
     print("No GPU found or TensorFlow not compiled with GPU support; running on CPU.")
 
 # -------------------- args & constants --------------------
-parser = argparse.ArgumentParser()
-parser.add_argument("--parquet_dir", type=str, default=".")
-parser.add_argument("--batch", type=int, default=16)
-parser.add_argument("--epochs", type=int, default=25)
-parser.add_argument("--img_size", type=int, default=128)
-parser.add_argument("--lr", type=float, default=1e-4)
-args = parser.parse_args()
+MODEL_DIR = "models"
+PARQUET_DIR = "data"
+BATCH_SIZE = 16
+EPOCHS = 50
+IMG_SIZE_VAL = 240
+LR = 1e-4
 
-IMG_SIZE = (args.img_size, args.img_size)
+os.makedirs(MODEL_DIR, exist_ok=True)
+
+IMG_SIZE = (IMG_SIZE_VAL, IMG_SIZE_VAL)
 AUTOTUNE = tf.data.AUTOTUNE
 
 # -------------------- read parquet ------------------------
 def load_parquets_to_df(parquet_dir: str) -> pd.DataFrame:
+    parquet_files = list(pathlib.Path(parquet_dir).glob("*.parquet"))
+
     dfs = []
-    for p in pathlib.Path(parquet_dir).glob("*.parquet"):
+    for p in parquet_files:
         df = pd.read_parquet(p, engine="pyarrow")
         df["image"] = df["image"].apply(lambda x: x["bytes"])
         df["is_valid"] = df["image"].apply(is_valid_jpeg)
@@ -77,7 +79,7 @@ def is_valid_jpeg(image_bytes):
     except tf.errors.InvalidArgumentError:
         return False
 
-df = load_parquets_to_df(args.parquet_dir)
+df = load_parquets_to_df(PARQUET_DIR)
 train_df, val_df = train_test_split(df, test_size=0.15, stratify=df["labels"], random_state=42)
 
 # -------------------- tf.data pipeline --------------------
@@ -102,13 +104,13 @@ def make_ds(dataframe, shuffle: bool = True) -> tf.data.Dataset:
 
     ds = ds.cache()
 
-    return ds.batch(args.batch).prefetch(AUTOTUNE)
+    return ds.batch(BATCH_SIZE).prefetch(AUTOTUNE)
 
 train_ds = make_ds(train_df)
 val_ds = make_ds(val_df, shuffle=False)
 
 # -------------------- model -------------------------------
-base = tf.keras.applications.EfficientNetB0(
+base = tf.keras.applications.EfficientNetB1(
     include_top=False,
     input_shape=IMG_SIZE + (3,),
     weights="imagenet",
@@ -119,6 +121,8 @@ inputs = tf.keras.Input(shape=IMG_SIZE + (3,))
 x = tf.keras.layers.RandomFlip("horizontal")(inputs)
 x = tf.keras.layers.RandomRotation(0.1)(x)
 x = tf.keras.layers.RandomZoom(0.1)(x)
+x = tf.keras.layers.RandomContrast(0.1)(x)
+x = tf.keras.layers.RandomBrightness(0.1)(x)
 x = base(x, training=False)
 x = tf.keras.layers.GlobalAveragePooling2D()(x)
 x = tf.keras.layers.Dropout(0.2)(x)
@@ -128,10 +132,10 @@ model = tf.keras.Model(inputs, outputs)
 class_weights = compute_class_weight("balanced", classes=np.array([0, 1]), y=train_df["labels"])
 cw = {0: class_weights[0], 1: class_weights[1]}
 
-steps_per_epoch = math.ceil(len(train_df) / args.batch)
+steps_per_epoch = math.ceil(len(train_df) / BATCH_SIZE)
 
 lr_schedule = CosineDecayRestarts(
-    initial_learning_rate=args.lr,
+    initial_learning_rate=LR,
     first_decay_steps=steps_per_epoch,
     t_mul=2.0,
     m_mul=0.8,
@@ -148,26 +152,38 @@ model.compile(
 
 callbacks = [
     tf.keras.callbacks.EarlyStopping(patience=4, restore_best_weights=True, monitor="val_auc"),
-    tf.keras.callbacks.ModelCheckpoint("models/catdog_best.keras", save_best_only=True, monitor="val_auc"),
+    tf.keras.callbacks.ModelCheckpoint(os.path.join(MODEL_DIR, "catdog_best.keras"), save_best_only=True, monitor="val_auc"),
 ]
 
 history = model.fit(
     train_ds,
     validation_data=val_ds,
-    epochs=args.epochs,
+    epochs=EPOCHS,
     class_weight=cw,
     callbacks=callbacks,
 )
 
 base.trainable = True
+
+for layer in base.layers[:-20]:
+    layer.trainable = False
+
+ft_lr_schedule = CosineDecayRestarts(
+    initial_learning_rate=LR / 10,
+    first_decay_steps=steps_per_epoch,
+    t_mul=2.0,
+    m_mul=0.8,
+    alpha=1e-5,
+)
+
 model.compile(
-    optimizer=tf.keras.optimizers.AdamW(args.lr / 10, weight_decay=1e-4),
+    optimizer=tf.keras.optimizers.AdamW(learning_rate=ft_lr_schedule, weight_decay=1e-4),
     loss="binary_crossentropy",
     metrics=["accuracy", tf.keras.metrics.AUC(name="auc")],
 )
 ft_history = model.fit(
     train_ds,
     validation_data=val_ds,
-    epochs=5,
+    epochs=50,
     callbacks=callbacks,
 )

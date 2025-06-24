@@ -2,10 +2,16 @@ import argparse
 import numpy as np
 import tensorflow as tf
 from pathlib import Path
+import os
+
+
+MODEL_DIR = os.getenv("MODEL_DIR", "models")
 
 
 def load_model():
-    model_path = "catdog_best.keras" if Path("models/catdog_best.keras").exists() else "catdog_best.h5"
+    candidate_new = Path(MODEL_DIR) / "catdog_best.keras"
+    candidate_h5 = Path(MODEL_DIR) / "catdog_best.h5"
+    model_path = str(candidate_new) if candidate_new.exists() else str(candidate_h5)
     if not Path(model_path).exists():
         print("❌ No model found (catdog_best.keras or catdog_best.h5).")
         exit(1)

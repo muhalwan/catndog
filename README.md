@@ -1,61 +1,76 @@
-# 🐱🐶 Cat vs. Dog Classifier (EfficientNet-B0, Keras/TensorFlow)
+# Cat vs. Dog Image Classifier
 
-A lightweight CNN that predicts whether an image contains **a cat or a dog**.
-The backbone is `EfficientNetB0` pre-trained on ImageNet and fine-tuned on the
-[microsoft/cats_vs_dogs](https://huggingface.co/datasets/microsoft/cats_vs_dogs)
-training split (23 410 images). You can get the model at https://huggingface.co/deruppu/catndog
+This repository contains the code for a Cat vs. Dog image classifier built with TensorFlow and Keras. The model uses the `EfficientNetB1` architecture and is trained to distinguish between images of cats and dogs.
 
-## Model Details
+## Features
 
-|                         | Value |
-|-------------------------|-------|
-| Backbone                | EfficientNet-B0 (`include_top=False`) |
-| Input size              | `128×128×3` |
-| Extra layers            | GlobalAvgPool ➜ Dropout(0.2) ➜ Dense(1, **sigmoid**) |
-| Precision               | Mixed-precision (`float16` activations / `float32` dense) |
-| Optimizer               | **AdamW** with cosine-decay-restarts schedule |
-| Loss                    | Binary Cross-Entropy |
-| Epochs                  | 25 (frozen backbone) + 5 (fine-tune full network) |
-| Batch size              | 16 |
-| Class weighting         | Balanced weights computed from training labels |
+- **Model**: `EfficientNetB1` pre-trained on ImageNet.
+- **Framework**: TensorFlow / Keras.
+- **Training**: Includes transfer learning and fine-tuning stages.
+- **Data Augmentation**: Uses a variety of data augmentation techniques to improve model robustness.
+- **Scripts**: Provides scripts for training (`train.py`), evaluation (`eval.py`), and inference (`test.py`).
 
-### Validation Metrics
+## Getting Started
 
-| Metric      | Value |
-|-------------|-------|
-| Accuracy    | **97.2 %** |
-| AUC         | **0.9967** |
-| Loss (BCE)  | 0.079 |
+### Prerequisites
 
-*(computed on 15 % stratified validation split – 3 512 images)*
+- Python 3.8+
+- TensorFlow 2.10+
+- Pandas
+- Scikit-learn
 
-## Intended Uses & Limitations
+### Installation
 
-* **Intended** : quick demos, tutorials, educational purposes, CAPTCHA-like tasks.
-* **Not intended** : production-grade pet breed classification, safety-critical
-  applications.
-* The model only distinguishes **cats** vs **dogs**; images with neither are
-  undefined behaviour.
-* Trained on 128×128 crops; very large images might require resizing first.
+1.  Clone the repository:
+    ```bash
+    git clone https://github.com/muhalwan/catndog.git
+    cd catndog
+    ```
+2.  Install the required packages:
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-## Dataset Credits
+### Data
 
-The training data is the publicly available
-[microsoft/cats_vs_dogs](https://huggingface.co/datasets/microsoft/cats_vs_dogs)
-dataset (originally the Asirra CAPTCHA dataset). **Huge thanks** to Microsoft
-Research and Petfinder.com for releasing the images!
+The model is trained on a Parquet dataset of cat and dog images. Place your `.parquet` files in the `data/` directory.
 
+## Training
+
+To train the model, run the `train.py` script:
+
+```bash
+python train.py
 ```
-@misc{microsoftcatsdogs,
-  title  = {Cats vs. Dogs Image Dataset},
-  author = {Microsoft Research & Petfinder.com},
-  howpublished = {HuggingFace Hub},
-  url    = {https://huggingface.co/datasets/microsoft/cats_vs_dogs}
-}
+
+The script will perform the following steps:
+1.  Load the Parquet files from the `data/` directory.
+2.  Split the data into training and validation sets.
+3.  Build the `EfficientNetB1` model.
+4.  Train the model using transfer learning and fine-tuning.
+5.  Save the best model to the `models/` directory.
+
+## Evaluation
+
+To evaluate the trained model, run the `eval.py` script:
+
+```bash
+python eval.py
 ```
+
+This will load the best model and compute performance metrics on the test set.
+
+## Results
+
+The model achieves the following performance on the test set:
+
+| Metric   | Value  |
+|----------|--------|
+| Loss     | 0.1495 |
+| Accuracy | 98.75% |
+| AUC      | 0.9986 |
 
 ## Acknowledgements
 
-* TensorFlow/Keras team for the excellent deep-learning framework.
-* Mingxing Tan & Quoc V. Le for EfficientNet.
-* The Hugging Face community for the awesome Model & Dataset hubs.
+- The training data is from the [microsoft/cats_vs_dogs](https://huggingface.co/datasets/microsoft/cats_vs_dogs) dataset.
+- This project is built upon the excellent work of the TensorFlow/Keras team and the creators of EfficientNet.
