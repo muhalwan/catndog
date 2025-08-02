@@ -10,9 +10,11 @@ import pandas as pd
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
-from tensorflow.keras import mixed_precision
+from tensorflow.keras import mixed_precision, backend as K
 import logging
 from tensorflow.keras.optimizers.schedules import CosineDecayRestarts
+
+K.set_image_data_format("channels_last")
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 tf.get_logger().setLevel(logging.ERROR)
@@ -40,10 +42,12 @@ BATCH_SIZE = 16
 EPOCHS = 50
 IMG_SIZE_VAL = 240
 LR = 1e-4
+BASE_WEIGHTS_PATH = "https://storage.googleapis.com/keras-applications/"
 
 os.makedirs(MODEL_DIR, exist_ok=True)
 
 IMG_SIZE = (IMG_SIZE_VAL, IMG_SIZE_VAL)
+INPUT_SHAPE = (IMG_SIZE_VAL, IMG_SIZE_VAL, 3)
 AUTOTUNE = tf.data.AUTOTUNE
 
 # -------------------- read parquet ------------------------
@@ -88,7 +92,7 @@ def decode_img(x):
     img = tf.io.decode_jpeg(x, channels=3, try_recover_truncated=True, acceptable_fraction=0.7)
     img = tf.image.resize(img, IMG_SIZE)
     img = tf.cast(img, tf.float32)
-    img = tf.keras.applications.efficientnet.preprocess_input(img)
+    img = tf.keras.applications.efficientnet_v2.preprocess_input(img)
     return img
 
 
@@ -110,14 +114,14 @@ train_ds = make_ds(train_df)
 val_ds = make_ds(val_df, shuffle=False)
 
 # -------------------- model -------------------------------
-base = tf.keras.applications.EfficientNetB1(
+base = tf.keras.applications.EfficientNetV2B0(
     include_top=False,
-    input_shape=IMG_SIZE + (3,),
+    input_shape=INPUT_SHAPE,
     weights="imagenet",
 )
 base.trainable = False
 
-inputs = tf.keras.Input(shape=IMG_SIZE + (3,))
+inputs = tf.keras.Input(shape=INPUT_SHAPE)
 x = tf.keras.layers.RandomFlip("horizontal")(inputs)
 x = tf.keras.layers.RandomRotation(0.1)(x)
 x = tf.keras.layers.RandomZoom(0.1)(x)

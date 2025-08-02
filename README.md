@@ -50,25 +50,15 @@ The script will perform the following steps:
 4.  Train the model using transfer learning and fine-tuning.
 5.  Save the best model to the `models/` directory.
 
-## Evaluation
-
-To evaluate the trained model, run the `eval.py` script:
-
-```bash
-python eval.py
-```
-
-This will load the best model and compute performance metrics on the test set.
-
 ## Results
 
 The model achieves the following performance on the test set:
 
 | Metric   | Value  |
 |----------|--------|
-| Loss     | 0.1495 |
-| Accuracy | 98.75% |
-| AUC      | 0.9986 |
+| Loss     | 0.0338 |
+| Accuracy | 99.54% |
+| AUC      | 0.9994 |
 
 ## Acknowledgements
 

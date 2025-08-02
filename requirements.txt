@@ -1,0 +1,18 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+numpy==1.26.4
+pandas==2.0.3
+scikit-learn==1.5.0
+xgboost==2.1.0
+joblib==1.4.2
+torch==2.3.1
+transformers==4.42.4
+sentencepiece==0.2.0
+tensorflow==2.16.1
+Pillow==10.3.0
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+python-multipart==0.0.9
+huggingface-hub==0.23.1
+pyarrow
+matplotlib
+seaborn
